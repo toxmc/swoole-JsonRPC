@@ -3,8 +3,7 @@
 namespace Jsonrpc\Protocols;
 
 /**
- * RPC 协议解析 相关
- * 协议格式为 [json字符串\r\n]
+ * RPC 协议解析
  */
 class Json
 {
@@ -25,8 +24,7 @@ class Json
 	}
 
 	/**
-	 * 打包，当向客户端发送数据的时候会自动调用
-	 * 
+	 * 打包
 	 * @param string $buffer        	
 	 * @return string
 	 */
@@ -37,9 +35,7 @@ class Json
 	}
 
 	/**
-	 * 解包，当接收到的数据字节数等于input返回的值（大于0的值）自动调用
-	 * 并传递给onMessage回调函数的$data参数
-	 * 
+	 * 解包
 	 * @param string $buffer        	
 	 * @return string
 	 */

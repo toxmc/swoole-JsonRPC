@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Jsonrpc 服务端
+ * @author smalleyes
+ */
 namespace Jsonrpc;
 
 class Server {

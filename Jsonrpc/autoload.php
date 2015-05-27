@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 自动加载类
+ * @param unknown $class
+ * @author smalleyes
+ */
 function autoload($class)
 {
 	$filename = BASEDIR.'/'.str_replace('\\','/',$class).'.php';

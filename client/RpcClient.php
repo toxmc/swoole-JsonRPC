@@ -68,7 +68,6 @@ class RpcClient
 
 	/**
 	 * 设置/获取服务端地址
-	 * 
 	 * @param array $address_array        	
 	 */
 	public static function config($address_array = array())
@@ -81,7 +80,6 @@ class RpcClient
 
 	/**
 	 * 获取一个实例
-	 * 
 	 * @param string $service_name        	
 	 * @return instance of RpcClient
 	 */
@@ -95,7 +93,6 @@ class RpcClient
 
 	/**
 	 * 构造函数
-	 * 
 	 * @param string $service_name        	
 	 */
 	protected function __construct($service_name)
@@ -147,7 +144,6 @@ class RpcClient
 
 	/**
 	 * 从服务端接收数据
-	 * 
 	 * @throws Exception
 	 */
 	public function recvData()
@@ -167,7 +163,6 @@ class RpcClient
 
 	/**
 	 * 打开到服务端的连接
-	 * 
 	 * @return void
 	 */
 	protected function openConnection()
@@ -208,9 +203,6 @@ function createJsonProtocol()
 	/**
 	 * RPC 协议解析 相关
 	 * 协议格式为 [json字符串\n]
-	 * 
-	 * @author walkor <worker-man@qq.com>
-	 *        
 	 */
 	class JsonProtocol
 	{
