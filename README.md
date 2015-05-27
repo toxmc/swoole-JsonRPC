@@ -8,7 +8,7 @@ use swoole for jsonRpc（运用swoole简单实现jsonRPC）
 
 ## Installation Swoole
 
-1. Install via pecl
+1. Install from pecl
     
     ```
     pecl install swoole
