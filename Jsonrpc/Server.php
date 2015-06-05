@@ -8,26 +8,28 @@ namespace Jsonrpc;
 
 class Server {
 	
-	protected $config = array(
-		'worker_num' => 4,
-		'open_eof_check' => true,
-		'package_eof' => "\r\n",
-		'task_ipc_mode' => 2,
-		'task_worker_num' => 2,
-		'user' => 'xmc',
-		'group' => 'xmc',
-		'log_file' => 'log/rpc.log',
-		'heartbeat_check_interval' => 300,
-		'heartbeat_idle_time' => 300,
-		'daemonize' => false	//守护进程改成true
-	);
+	/**
+	 * MasterPid命令时格式化输出
+	 * ManagerPid命令时格式化输出
+	 * WorkerId命令时格式化输出
+	 * WorkerPid命令时格式化输出
+	 * @var int
+	 */
+	protected static $_maxMasterPidLength = 12;
+	protected static $_maxManagerPidLength = 12;
+	protected static $_maxWorkerIdLength = 12;
+	protected static $_maxWorkerPidLength = 12;
+	/**
+	 * 用于存放实例化过的service类
+	 * @var unknown
+	 */
 	protected $services = array(); 
 	
 	public function __construct($ip="0.0.0.0", $port=6666, $mode = SWOOLE_PROCESS)
 	{
 		$serv = new \swoole_server($ip, $port, $mode);
-		$serv->set($this->config);
-		$serv->config = $this->config;
+		$serv->config = \Jsonrpc\Config\Server::getConfig();
+		$serv->set($serv->config);
 		$serv->on('Start', array($this, 'onStart'));
 		$serv->on('Connect', array($this, 'onConnect'));
 		$serv->on('Receive', array($this, 'onReceive'));
@@ -50,8 +52,10 @@ class Server {
 	{
 		global $argv;
 		swoole_set_process_name("php {$argv[0]}: master");
-		echo "MasterPid={$serv->master_pid}|Manager_pid={$serv->manager_pid}\n";
-		echo "Server: start.Swoole version is [" . SWOOLE_VERSION . "]\n";
+		echo "\033[1A\n\033[K-----------------------\033[47;30m SWOOLE \033[0m-----------------------------\n\033[0m";
+		echo 'swoole version:' . swoole_version() . "          PHP version:".PHP_VERSION."\n";
+		echo "------------------------\033[47;30m WORKERS \033[0m---------------------------\n";
+		echo "\033[47;30mMasterPid\033[0m", str_pad('', self::$_maxMasterPidLength + 2 - strlen('MasterPid')), "\033[47;30mManagerPid\033[0m", str_pad('', self::$_maxManagerPidLength + 2 - strlen('ManagerPid')), "\033[47;30mWorkerId\033[0m", str_pad('', self::$_maxWorkerIdLength + 2 - strlen('WorkerId')),  "\033[47;30mWorkerPid\033[0m\n";
 	}
 	
 	public function log($msg)
@@ -62,13 +66,18 @@ class Server {
 	public function processRename($serv, $worker_id)
 	{
 		global $argv;
-		if ($worker_id >= $serv->setting['worker_num']) {
+		$worker_num = isset($serv->setting['worker_num']) ? $serv->setting['worker_num'] : 1;
+		$task_worker_num = isset($serv->setting['task_worker_num']) ? $serv->setting['task_worker_num'] : 0;
+		
+		if ($worker_id >= $worker_num) {
 			swoole_set_process_name("php {$argv[0]}: task");
 		} else {
 			swoole_set_process_name("php {$argv[0]}: worker");
 		}
-		echo "WorkerStart: MasterPid={$serv->master_pid}|Manager_pid={$serv->manager_pid}";
-		echo "|WorkerId={$serv->worker_id}|WorkerPid={$serv->worker_pid}\n";
+		echo str_pad($serv->master_pid, self::$_maxMasterPidLength+2),
+			  str_pad($serv->manager_pid, self::$_maxManagerPidLength+2),
+			  str_pad($serv->worker_id, self::$_maxWorkerIdLength+2),
+			  str_pad($serv->worker_pid, self::$_maxWorkerIdLength), "\n";
 	}
 	
 	public function setTimerInWorker(\swoole_server $serv, $worker_id)
@@ -78,26 +87,17 @@ class Server {
 			$serv->addtimer(3000);
 		}
 	}
-	
-	public function onShutdown($serv)
-	{
-		echo "Server: onShutdown\n";
-	}
+
 	
 	public function onTimer($serv, $interval)
 	{
 		echo "Timer#$interval: " . microtime(true) . "\n";
 		$serv->task("hello");
 	}
-	
-	public function onClose($serv, $fd, $from_id)
-	{
-		$this->log("Worker#{$serv->worker_pid} Client[$fd@$from_id]: fd=$fd is closed");
-	}
+
 	
 	public function onConnect(\swoole_server $serv, $fd, $from_id)
 	{
-		// 	var_dump($serv->connection_info($fd));
 		echo "Worker#{$serv->worker_pid} Client[$fd@$from_id]: Connect.\n";
 	}
 	
@@ -106,11 +106,7 @@ class Server {
 		$this->processRename($serv, $worker_id);
 		// setTimerInWorker($serv, $worker_id);
 	}
-	
-	public function onWorkerStop($serv, $worker_id)
-	{
-		echo "WorkerStop[$worker_id]|pid=" . $serv->worker_pid . ".\n";
-	}
+
 	
 	public function onReceive(\swoole_server $serv, $fd, $from_id, $data)
 	{
@@ -157,30 +153,37 @@ class Server {
 	
 	public function onTask(\swoole_server $serv, $task_id, $from_id, $data)
 	{
-		if ($data == 'taskwait') {
-			$fd = str_replace('task-', '', $data);
-			$serv->send($fd, "hello world");
-			return array(
-				"task" => 'wait'
-			);
-		} else {
-			$fd = str_replace('task-', '', $data);
-			$serv->send($fd, "hello world in taskworker.");
-			return;
-		}
+		//这里是task任务的回调函数
+		//一些处理时间比较长的流程可以放在这里执行
+		echo "this is onTask\n";
+		var_dump($data);
 	}
 	
 	public function onFinish(\swoole_server $serv, $task_id, $data)
 	{
-		list ($str, $fd) = explode('-', $data);
-		$serv->send($fd, 'taskok');
-		var_dump($str, $fd);
-		echo "AsyncTask Finish: result={$data}. PID=" . $serv->worker_pid . PHP_EOL;
+		//ontask执行完毕自动调用onFinish
+		echo "taskid={$task_id} is over\n";
 	}
-	
+
+	public function onClose($serv, $fd, $from_id)
+	{
+		$this->log("Worker#{$serv->worker_pid} Client[$fd@$from_id]: fd=$fd is closed");
+	}
+
 	public function onWorkerError(\swoole_server $serv, $worker_id, $worker_pid, $exit_code)
 	{
 		echo "worker abnormal exit. WorkerId=$worker_id|Pid=$worker_pid|ExitCode=$exit_code\n";
+	}
+	
+	public function onWorkerStop($serv, $worker_id)
+	{
+		echo "WorkerStop[$worker_id]|pid=" . $serv->worker_pid . ".\n";
+	}
+	
+	
+	public function onShutdown($serv)
+	{
+		echo "Server: onShutdown\n";
 	}
 	
 
